@@ -1,0 +1,5 @@
+-e git://github.com/asrp/persistent_doc#egg=persistent_doc
+-e git://github.com/asrp/tkui#egg=tkui
+-e git://github.com/asrp/pymetaterp#egg=pymetaterp
+pyrsistent
+numpy

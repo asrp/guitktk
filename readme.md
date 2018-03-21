@@ -4,7 +4,7 @@ Get the flexibility of not using a UI toolkit while still writing little code, a
 
 ![Example usage](docs/preview.gif)
 
-[Full slower video with that example](docs/demo.mp4) and more. All typing is fast forwarded. [Source by the end of the video](docs/video-final.py).
+[Full slower video with that example](docs/video.mp4) and more. All typing is fast forwarded. [Source by the end of the video](docs/video-final.py).
 
 [Text description matching the video and more usage after the video](https://blog.asrpo.com/gui_toolkit)
 

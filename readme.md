@@ -12,15 +12,15 @@ Get the flexibility of not using a UI toolkit while still writing little code, a
 
 guitktk is a toolkit for making GUI toolkits (i.e., a GUI toolkit toolkit).
 
-Quickly experiment with different user interactions by editing the interface in tandem with an external editor. Faster feedback makes adding helper elements for building the final interface worthwhile. Well suited for free-form canvas editing style interfaces but also allows building more traditional GUIs.
+Quickly experiment with different user interactions by alternating between editing (and using) the visual interface in guitktk and editing your program's source in an external text editor. Faster feedback makes adding helper elements for building the final interface worthwhile. Well suited for free-form canvas editing style interfaces but also allows building more traditional GUIs.
 
 While all examples in this readme demonstrate how to create well known GUI elements with guitktk, guitktk is made for assembling other graphical and interactive elements. Especially ones better suited for the problem domain than generic elements. I made guitktk with the intention of building editors with it.
 
-[TODO: Add an example of that here.]
+[TODO: Add an example of making an (atypical) editor.]
 
 You can make GUI toolkits out of guitktk but the intended use is actually to make your UI and the toolkit to support it simultaneously. Altering a python source file and document, trying things out, visualizing the result and modify as you go.
 
-## Language by example
+## Event handling language
 
 guitktk uses a parser to match keyboard, mouse and other events. Here's an example of a rule describing a console with an interpreter:
 

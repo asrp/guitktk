@@ -8,6 +8,42 @@ Get the flexibility of not using a UI toolkit while still writing little code, a
 
 [Text description matching the video and more usage after the video](https://blog.asrpo.com/gui_toolkit)
 
+Table of Contents
+=================
+
+   * [guitktk](#guitktk---make-and-evolve-a-gui-and-its-toolkit-simultaneously)
+      * [Intended use](#intended-use)
+      * [Event handling language](#event-handling-language)
+   * [Installation](#installation)
+      * [Dependencies](#dependencies)
+      * [Running](#running)
+      * [Basic usage](#basic-usage)
+      * [Default globals](#default-globals)
+   * [Examples](#examples)
+      * [Different interfaces for adding a line](#different-interfaces-for-adding-a-line)
+         * [Single keypress](#single-keypress)
+         * [Modal](#modal)
+         * [Modal two endpoints](#modal-two-endpoints)
+   * [Document](#document)
+      * [Node types](#node-types)
+      * [Special properties](#special-properties)
+      * [Propagates to subtree](#propagates-to-subtree)
+   * [Default interface](#default-interface)
+      * [Hard-coded keys](#hard-coded-keys)
+      * [Default UI](#default-ui)
+         * [Special elements](#special-elements)
+      * [Debugging window](#debugging-window)
+      * [Changing the default grammar](#changing-the-default-grammar)
+      * [Formulas referencing nodes in the document](#formulas-referencing-nodes-in-the-document)
+      * [Changing backends](#changing-backends)
+      * [Helper languages for describing trees](#helper-languages-for-describing-trees)
+   * [Undo redo and debugging](#undo-redo-and-debugging)
+      * [Undo reload](#undo-reload)
+      * [Undo individual changes](#undo-individual-changes)
+      * [Saving and loading documents](#saving-and-loading-documents)
+      * [Reading the source](#reading-the-source)
+      * [To document](#to-document)
+
 ## Intended use
 
 guitktk is a toolkit for making GUI toolkits (i.e., a GUI toolkit toolkit).
@@ -167,7 +203,7 @@ Functions:
 
 # Document
 
-`p_something` is shorthand a child `point` Node with `child_id="something"`.
+`p_something` is shorthand for a child `point` Node with `child_id="something"`.
 
 ## Node types
 

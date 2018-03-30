@@ -8,7 +8,7 @@ from time import time as cur_time
 # from pyinstrument import Profiler
 from ast import literal_eval
 
-pdocument.scope = {"P": P, "cur_time": cur_time}
+pdocument.scope = {"P": P, "cur_time": cur_time, "transformed": transformed}
 
 #doc['drawing'].append(Node("text", value="hello world", p_botleft=P(100, 100)))
 #doc['drawing'][-1]["id"] = "console"
@@ -119,17 +119,13 @@ def rectangle1(topleft, botright):
 #doc['drawing'].append(Node("group", id="rect", p_topleft=P(300, 300), p_botright=P(500, 400), children=[rectangle2()]))
 
 # Can't transform corners this way! Need corners to be a pair of points
-def topright(corners, transform):
+def topright(corners):
     if numpy.array_equal(corners, (None, None)):
         return None
-    return Node("point", value=P(transform.dot(numpy.append(corners[1], 1))[:2][0],
-                                 transform.dot(numpy.append(corners[0], 1))[:2][1]))
+    return Node("point", value=P(corners[1][0], corners[0][1]))
 
-def botleft(corners, transform):
-    return Node("point", value=P(transform.dot(numpy.append(corners[0], 1))[:2][0],
-                                 transform.dot(numpy.append(corners[1], 1))[:2][1]))
-    return Node("point", value=P(transform.dot(corners[0])[0],
-                                 transform.dot(corners[1])[1]))
+def botleft(corners):
+    return Node("point", value=P(corners[0][0], corners[1][1]))
 
 pdocument.scope["topright"] = topright
 pdocument.scope["botleft"] = botleft
@@ -139,15 +135,20 @@ def rectangle2(**params):
     params_str = " ".join("%s=%s" % (key, _repr(value))
                           for key, value in params.items())
     inp = """
-    path:
-      corners=exr('(`self.topleft.value, `self.botright.value)')
-      topright=exr('topright(`self.corners, (`self.parent).transform)')
-      botleft=exr('botleft(`self.corners, (`self.parent).transform)')
+    group:
+      corners=exc('(transformed(`self.topleft), transformed(`self.botright))')
+      topright=exc('topright(`self.corners)')
+      botleft=exc('botleft(`self.corners)')
       %s
-      line: start=exr('`self.parent.topleft') end=exr('`self.parent.topright')
-      line: start=exr('`self.parent.topright') end=exr('`self.parent.botright')
-      line: start=exr('`self.parent.botright') end=exr('`self.parent.botleft')
-      line: start=exr('`self.parent.botleft') end=exr('`self.parent.topleft')
+      path: skip_points=True
+        line: start=exc('`self.parent.parent.topleft')
+              end=exc('`self.parent.parent.topright')
+        line: start=exc('`self.parent.parent.topright')
+              end=exc('`self.parent.parent.botright')
+        line: start=exc('`self.parent.parent.botright')
+              end=exc('`self.parent.parent.botleft')
+        line: start=exc('`self.parent.parent.botleft')
+              end=exc('`self.parent.parent.topleft')
     """ % params_str
     return tree_lang.parse(inp, locals=globals())
 
@@ -320,17 +321,20 @@ def drop_selection():
     doc["editor.drag_start"] = None
 
 def add_rectangle():
-    doc["drawing"].append(rectangle2(p_topleft=doc["editor.mouse_xy"],
-                                     p_botright=doc["editor.mouse_xy"] + P(50, 50)))
+    doc["drawing"].append(rectangle2(px_topleft=doc["editor.mouse_xy"],
+                                     px_botright=doc["editor.mouse_xy"] + P(50, 50)))
 
 def visualize_cb(node):
     from visualize import visualize
+    if "visualization" in doc.m:
+        doc["visualization"].deparent()
     doc['drawing'].append(Node("group", id="visualization",
                                children=list(visualize(node))))
 
 def add_visualize():
     assert(len(doc["selection"]) == 1)
     node = doc["selection.0.ref"]
+    #visualize_cb(node)
     pdocument.scope['visualize_cb'] = visualize_cb
     doc['editor.callbacks.visualize'] = Ex('visualize_cb(`%s)' % node['id'])
 
@@ -449,6 +453,7 @@ def fail():
 if __init__:
     doc.saved = [doc.m]
     doc.undo_index = -1
+    doc.sync()
 
 input_callbacks = """
 exec = key_press(Return)

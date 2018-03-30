@@ -55,7 +55,7 @@ def point_in_closed_path(point, path):
         # Cross down
         if segment[0][1] > point[1] >= segment[1][1] and is_left(point, segment) < 0:
             winding_number -= 1
-    print "Winding number", winding_number
+    # print "Winding number", winding_number
     return winding_number != 0
 
 def extents(text, font_size):
@@ -66,7 +66,7 @@ def extents(text, font_size):
         x1, x2, y1, y2 = surface.canvas.bbox(item)
         return (0, x2 - x1), (x1 - x2, y1 - y2), (y1 - y2, 0)
     elif BACKEND == "xcb":
-        surface.context.set_font_size(font_size)
+        surface.context.set_font_size(font_size * 1.5)
         x, y, width, height, dx, dy = surface.context.text_extents(text)
         return (x, y), (width, height), (dx, dy)
     else:

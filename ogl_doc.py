@@ -49,7 +49,7 @@ class OGLCanvas:
                     glEnd()
             elif func == "text":
                 glWindowPos2f(args["botleft"][0], self.height-args["botleft"][1])
-                for ch in args["text"]:
+                for ch in (args["text"] or ""):
                     glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24,
                                         ctypes.c_int(ord(ch)))
             elif func == "group":

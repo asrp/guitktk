@@ -61,6 +61,8 @@ def _flatten(root, style={}, transform=identity, skip_transform=False):
                                         transform = transform):
                         yield elem
     elif root.name == "point":
+        if default_get(style, "skip_points"):
+            return
         matrix = numpy.array([[1, 0, root["value"][0]],
                               [0, 1, root["value"][1]],
                               [0, 0,       1]])
@@ -97,11 +99,11 @@ def collide(root, xy, style = {}, transform=identity, tolerance=3, skip=False):
         if not skip:
             transform = transform.dot(root.transform)
         if root.name == "path" and style.get("fill_color"):
-            print "Testing fill"
+            # print "Testing fill"
             path = [(transformed(seg["start"], transform),
                      transformed(seg["end"], transform))
-                    for seg in root]
-            print "Input", xy, path
+                    for seg in root if seg.name == 'line']
+            # print "Input", xy, path
             if point_in_closed_path(xy, path):
                 return True
         return any(collide(child, xy, style, transform, tolerance)

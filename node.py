@@ -51,6 +51,13 @@ class Node(FrozenNode):
             if key.startswith("p_"):
                 children.append(Node("point", child_id=key[2:], value=value))
                 del kwargs[key]
+                params[key[2:]] = Ex("`%s" % children[-1]["id"], "reeval")
+            elif key.startswith("px_"):
+                # bp()
+                child_id = key[3:]
+                children.append(Node("point", child_id=child_id, value=value))
+                del kwargs[key]
+                params[child_id] = Ex("`%s" % children[-1]["id"], "on first read")
             elif key.startswith("r_"):
                 raise Exception("ref nodes are depricated! Use expressions with a single id instead.")
             elif key == "transform":
@@ -60,9 +67,22 @@ class Node(FrozenNode):
             elif key == "transforms":
                 if type(value) not in [map_type, Ex]:
                     kwargs["transforms"] = TransformDict(dict_=value, node=params["id"], doc=doc)
+        # Had problem where this overwrote value passed by param!
+        # Need to know if "children" is the intended change or
+        # params is the intended change!
+        # Setting to "params overwrites children" for now.
+        # NO, there are bigger problems with children not synced to the
+        # new param values
+        # Could use the latest one of the two if we had timestamps
+
+        # General problem: This loop is called at modification instead of
+        # only at initialization
+        # Should decide on the semantics of appending a node with
+        # child_id (or removing one with child_id) means for params
+        # anyways.
         for child_id in children:
             child = get_eval(child_id)
-            if "child_id" in child:
+            if "child_id" in child and child["child_id"] not in params:
                 params[child["child_id"]] = child_id
         if type(params).__name__ == '_Evolver':
             params = params.persistent()
@@ -85,25 +105,22 @@ class Node(FrozenNode):
         #    child.change(_parent=wrap3(new_id, doc))
 
     def latest(self):
-        return self.doc[self["id"]]
-
-    @property
-    def L(self):
-        return self.doc[self["id"]]
+        return self.doc.get_node(self["id"])
 
     @property
     def transform(self):
         transform = identity
-        if "transforms" not in self:
+        if "transforms" not in self.params:
             return identity
         else:
-            for key in self["transforms"]:
+            for key in self.params["transforms"]:
                 matrix = get_matrix(self["transforms"][key])
                 transform = transform.dot(matrix)
             return transform
 
     @property
     def transforms(self):
+        self = self.L
         if "transforms" not in self:
             self["transforms"] = TransformDict(node=self["id"], doc=self.doc)
             self = self.latest()
@@ -124,9 +141,10 @@ class Node(FrozenNode):
                 if "child_id" in child:
                     empty.append(child["child_id"])
                     if child.name == "point":
-                        value = child.get_raw("value")
+                        value = child.get_expr("value")
                         value = PointRepr(value) if isinstance(value, numpy.ndarray) else value
-                        items.append(("p_%s" % child["child_id"], value))
+                        prefix = "px_" if child.parent.get_expr(child["child_id"]).expr.calc == "on first read" else "p_"
+                        items.append(("%s%s" % (prefix, child["child_id"]), value))
                     if child.name == "ref":
                         items.append(("r_%s" % child["child_id"],
                                       child["ref_id"]))
@@ -175,7 +193,9 @@ class Node(FrozenNode):
         # Want some way to cache the answer for children?
         # Would need transforms to be applied after instead of before.
         # Could almost make this an expression
-        if not skip:
+
+        # transformed() already applies the last transform to points
+        if not skip and self.name != "point":
             transform = transform.dot(self.transform)
         if self.name in ["group", "path"]:
             boxes = [child.bbox(transform)

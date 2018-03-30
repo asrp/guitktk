@@ -107,9 +107,6 @@ class Document(pdocument.Document):
                 self.tree_doc["drawing"].replace(list(visualize.visualize(self.tree_root)))
             self.tree_ui.text = newtext
 
-def n(inp):
-    return tree_lang.parse(inp, locals=globals())
-
 def icons():
     inp = """
     group:
@@ -359,8 +356,8 @@ def rectangle4(**params):
     inp = """
     path:
       %s
-      topright=exr('topright(`self.corners, (`self.parent).transform)')
-      botleft=exr('botleft(`self.corners, (`self.parent).transform)')
+      topright=exr('topright(`self.corners)')
+      botleft=exr('botleft(`self.corners)')
       p_botright=exr('`self.parent.corners[1]')
       p_topleft=exr('`self.parent.corners[0]')
       line: start=exr('`self.parent.topleft') end=exr('`self.parent.topright')

@@ -65,3 +65,6 @@ def get_matrix(transform):
     else:
         raise Exception('Unknown transform %s' % operation)
     return matrix
+
+def n(inp):
+    return tree_lang.parse(inp, locals=globals())

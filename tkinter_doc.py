@@ -33,8 +33,11 @@ class TkCanvas:
                                      outline=hexcol(default_get(args, "stroke_color")),
                                      fill=hexcol(default_get(args, "fill_color")))
             elif func == "text":
-                font = ("TkFixedFont", args["font_size"])
-                self.canvas.create_text(*args["botleft"], font=font, text=args["text"], anchor="sw")
+                font = (args["font_face"] if args.get("font_face") else "TkFixedFont",
+                        int(round(args["font_size"])))
+                self.canvas.create_text(*args["botleft"], font=font,
+                                        fill=hexcol(default_get(args, "stroke_color")),
+                                        text=args["text"], anchor="sw")
             elif func == "group":
                 pass
             elif func == "begin_region":

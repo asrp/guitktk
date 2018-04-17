@@ -31,6 +31,8 @@ def flatten(root, style={}, transform=identity, skip_transform=False):
 def _flatten(root, style={}, transform=identity, skip_transform=False):
     """ Flatten tree into drawing commands."""
     assert(root.doc is not None)
+    if not default_get(root, "visible"):
+        return
     style = style.copy()
     for key in ["line_width", "stroke_color", "fill_color", "dash", "skip_points"]:
         if key in root:
@@ -60,6 +62,17 @@ def _flatten(root, style={}, transform=identity, skip_transform=False):
                     for elem in flatten(grandchild, style = style,
                                         transform = transform):
                         yield elem
+    elif root.name in ["clip"]:
+        # Clipping needs to specify both the clipped region and
+        # the clipped elements!
+        # Maybe only allow clipped rectangles at first?
+        yield ("begin_clipped", ())
+        for child in root["clip_path"]:
+            for segment in flatten_seg(child, style = style,
+                                       transform = transform):
+                yield segment
+        yield ("end_clip", ())
+        yield ("end_clipped", ())
     elif root.name == "point":
         if default_get(style, "skip_points"):
             return
@@ -80,12 +93,19 @@ def _flatten(root, style={}, transform=identity, skip_transform=False):
         yield ("text", {"text": value,
                         "transform": transform,
                         "font_size": default_get(root, "font_size"),
+                        "font_face": default_get(root, "font_face"),
+                        "stroke_color": default_get(style, "stroke_color"),
                         "botleft": transformed(root["botleft"], transform)})
     elif root.name == "group":
         yield ("group", ())
     if root.name in ["group", "text"]:
-        if default_get(root, "visible"):
-            for child in root:
+        #if default_get(root, "visible"):
+        for child in root:
+            for elem in flatten(child, style = style,
+                                transform = transform):
+                yield elem
+        if default_get(root, "render"):
+            for child in root["render"]:
                 for elem in flatten(child, style = style,
                                     transform = transform):
                     yield elem

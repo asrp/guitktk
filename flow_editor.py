@@ -1,5 +1,6 @@
 import persistent_doc.document as pdocument
 from node import Node, _repr
+import node
 
 from const import P, exr, exc, Ex
 import compgeo
@@ -75,13 +76,21 @@ class Document(pdocument.Document):
         return node
 
     def save(self, filename = "saved_doc.py"):
+        import node
+        from shutil import copyfile
+        timestr = time.strftime("%Y%m%d-%H%M%S")
         f = open(filename, "w")
         f.write("from node import Node\n")
         f.write("from numpy import array\n")
         f.write("from const import P, exr, exc\n")
         f.write("from persistent_doc.document import pmap\n")
+        f.write("import node\n")
+        f.write("node.node_num = %s\n" % node.node_num)
         f.write("root = %s" % self.tree_root.code())
         f.close()
+        if not os.path.exists("saves"):
+            os.makedirs("saves")
+        copyfile(filename, os.path.join("saves", "%s-%s" % (filename, timestr)))
 
     def load(self, filename = "saved_doc"):
         # A bit dangerous because of eval at the moment.
@@ -98,8 +107,13 @@ class Document(pdocument.Document):
     def update_text(self, *args, **kwargs):
         if not self.tree_ui:
             return
+        id_ = doc.m.get('editor.text_root')
+        if id_ is None:
+            newtext = ""
+        else:
+            newtext = "\n".join(self[id_].pprint_string())
         #newtext = "\n".join(self.tree_root.pprint_string())
-        newtext = "\n".join(self['drawing'].pprint_string())
+        #newtext = ""
         #newtext = "\n".join(self.root.pprint_string())
         #tree_logger.debug("Text changed %s" % (uidict["tree"].get(1.0, 'end') != newtext+"\n"))
         if self.tree_ui.text != newtext+"\n":
@@ -272,7 +286,8 @@ class EditorDocument(Document):
                     self.reload(input_callbacks)
             if time.time() - starttime > 0.2:
                 print "Over time!", time.time() - starttime
-            num_events += 1
+            if event.type != "no_exposure":
+                num_events += 1
         if num_events:
             self.sync()
             event_logger.debug("Eventtime %s %.5f" % (num_events, time.time() - starttime))
@@ -337,6 +352,7 @@ def demo_empty_doc():
           mouse_xy=P(0, 0) key_name=None key_char=None key_mods=None
           mode="edit" selected=pdocument.pmap()
           callbacks=pdocument.pmap() gui_selected=None p_lastxy=P(0, 0)
+          text_root="drawing"
           .path=path: stroke_color=(0, 0.5, 0)
           .text=text: value="" botleft=Ex("`self.parent.lastxy", calc="reeval")
         group: id="overlay"
@@ -380,6 +396,7 @@ def full_empty_doc():
           mouse_xy=P(0, 0) key_name=None key_char=None key_mods=None
           mode="edit" selected=pdocument.pmap()
           callbacks=pdocument.pmap() gui_selected=None p_lastxy=P(0, 0)
+          text_root="drawing"
           .path=path: stroke_color=(0, 0.5, 0)
           .text=text: value="" botleft=Ex("`self.parent.lastxy", calc="reeval")
         group: id="overlay"
@@ -400,6 +417,15 @@ def full_empty_doc():
     """
     return tree_lang.parse(inp, locals=globals())
 
+def tkui_sendexec(event):
+    if not hasattr(doc, "saved"):
+        terp.sendexec(event)
+        return
+    save_undo()
+    is_error = terp.sendexec(event)
+    if is_error:
+        doc_undo()
+
 if __name__ == "__main__":
     #empty_doc = full_empty_doc
     empty_doc = demo_empty_doc
@@ -415,8 +441,8 @@ if __name__ == "__main__":
 
     histfile = "flow_editor_history"
     terp = TkTerp(histfile, globals())
-    uidict['exec'].bind('<Return>', terp.sendexec)
-    uidict['exec'].bind('<KP_Enter>', terp.sendexec)
+    uidict['exec'].bind('<Return>', tkui_sendexec) #terp.sendexec
+    uidict['exec'].bind('<KP_Enter>', tkui_sendexec)
     uidict['exec'].bind('<Up>', terp.hist)
     uidict['exec'].bind('<Down>', terp.hist)
     uidict["root"].protocol("WM_DELETE_WINDOW", quit)

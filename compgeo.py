@@ -58,15 +58,21 @@ def point_in_closed_path(point, path):
     # print "Winding number", winding_number
     return winding_number != 0
 
-def extents(text, font_size):
+def extents(text, font_size, font_face=None):
     if BACKEND == "tkinter":
+        font = (font_face if font_face else "TkFixedFont",
+                int(round(font_size)))
         item = surface.canvas.create_text(0, 0,
-                                          font=("TkFixedFont", font_size),
+                                          font=font,
                                           text=text, anchor="sw")
         x1, x2, y1, y2 = surface.canvas.bbox(item)
         return (0, x2 - x1), (x1 - x2, y1 - y2), (y1 - y2, 0)
     elif BACKEND == "xcb":
         surface.context.set_font_size(font_size * 1.5)
+        if font_face:
+            surface.context.select_font_face(font_face)
+        else:
+            surface.context.set_font_face(None)
         x, y, width, height, dx, dy = surface.context.text_extents(text)
         return (x, y), (width, height), (dx, dy)
     else:

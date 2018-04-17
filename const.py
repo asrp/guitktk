@@ -9,10 +9,12 @@ default = {"line_width": 2,
            "fill_color": None,
            "dash": ([], 0),
            "font_size": 20,
+           "font_face": None,
            "skip_points": False,
            "angle": (0, 2*math.pi),
            "icon": "point_icon",
-           "visible": True}
+           "visible": True,
+           "render": ()}
 
 #identity = numpy.matrix(numpy.identity(3, dtype = int))
 identity = numpy.identity(3, dtype = int)
@@ -65,6 +67,3 @@ def get_matrix(transform):
     else:
         raise Exception('Unknown transform %s' % operation)
     return matrix
-
-def n(inp):
-    return tree_lang.parse(inp, locals=globals())

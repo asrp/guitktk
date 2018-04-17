@@ -33,7 +33,11 @@ def clear(node_id):
 
 def key_press(event, key_name=None):
     return event.type == Event.key_press and\
-        (key_name is None or event.key_name == key_name)
+        (key_name is None or (event.key_name == key_name and (not key_name.isalpha or "Shift" not in event.mods)))
+
+def shift_key_press(event, key_name=None):
+    return event.type == Event.key_press and "Shift" in event.mods and\
+        (key_name is None or event.key_name.lower() == key_name)
 
 def run_button():
     root = doc[doc["selection.root"]]
@@ -56,16 +60,18 @@ def mouse_release(event, button=None):
 
 
 def create_text():
-    doc["drawing"].append(Node("text", value="",
+    doc[doc['selection.root']].append(Node("text", value="",
                                p_botleft=doc["editor.mouse_txy"]))
-    doc["editor.focus"] = doc["drawing"][-1]["id"]
+    doc["editor.focus"] = doc[doc['selection.root']][-1]["id"]
 
 def edit_text():
     root = doc[doc["selection.root"]]
+    mxy = doc["editor.mouse_xy"] if root["id"] == "drawing" else \
+          doc["editor.mouse_txy"]
     for child, transform in root.dfs():
         # Problem: dfs includes child's transform and so does bbox.
         if child.name == "text" and\
-           collide(child, doc["editor.mouse_xy"], transform=transform, tolerance=8):
+           collide(child, mxy, transform=transform, tolerance=8):
             doc["editor.focus"] = child["id"]
             return True
     return False
@@ -79,10 +85,12 @@ def finished_edit_text():
         node["value"] = Ex(text[1:], calc="reeval")
 
 def grab_point():
-    root = doc[doc["selection"]["root"]]
+    root = doc[doc["selection.root"]]
+    mxy = doc["editor.mouse_xy"] if root["id"] == "drawing" else \
+          doc["editor.mouse_txy"]
     for child, transform in root.dfs():
         if child.name == "point" and\
-           collide(child, doc["editor.mouse_xy"], transform=transform, tolerance=8):
+           collide(child, mxy, transform=transform, tolerance=8):
             doc["editor.drag_start"] = doc["editor.mouse_txy"]
             doc["editor.grabbed"] = child["id"]
             child.transforms["editor"] = Ex("('translate', `editor.mouse_txy - `editor.drag_start)", calc='on first read')
@@ -96,7 +104,7 @@ def drop_point():
     doc["editor.grabbed"] = None
 
 def add_line():
-    doc["drawing"].append(Node("path", fill_color=None, children=[
+    doc[doc['selection.root']].append(Node("path", fill_color=None, children=[
                            Node("line", p_start=doc["editor.mouse_txy"],
                                 p_end=doc["editor.mouse_txy"] + P(50, 50))]))
 
@@ -208,7 +216,7 @@ def least_common_ancestor(nodes):
     return doc[path_to_root[0]]
 
 def group_selection():
-    nodes = [doc[id] for id in doc["editor.selected"]]
+    nodes = [ref['ref'] for ref in doc["selection"]]
     ancestor = least_common_ancestor(nodes)
     for node in nodes:
         node.deparent()
@@ -321,14 +329,14 @@ def drop_selection():
     doc["editor.drag_start"] = None
 
 def add_rectangle():
-    doc["drawing"].append(rectangle2(px_topleft=doc["editor.mouse_xy"],
+    doc[doc['selection.root']].append(rectangle2(px_topleft=doc["editor.mouse_xy"],
                                      px_botright=doc["editor.mouse_xy"] + P(50, 50)))
 
 def visualize_cb(node):
     from visualize import visualize
     if "visualization" in doc.m:
         doc["visualization"].deparent()
-    doc['drawing'].append(Node("group", id="visualization",
+    doc[doc['selection.root']].append(Node("group", id="visualization",
                                children=list(visualize(node))))
 
 def add_visualize():
@@ -418,19 +426,23 @@ def update_gui_tree():
         doc['gui_tree'].deparent()
     # Should instead find the right index
     doc['overlay'].append(Node("group",
-                               children=list(visualize(doc['drawing']))))
+                               children=list(visualize(doc[doc['selection.root']]))))
 
 def gui_select():
     root = doc[doc["selection"]["root"]]
-    xy = doc["editor.mouse_xy"]
+    mxy = doc["editor.mouse_xy"] if root["id"] == "drawing" else \
+          doc["editor.mouse_txy"]
     for child, transform in root.dfs():
         if child.name not in ["group", "path"] and\
-           collide(child, xy, transform=transform, tolerance=8):
+           collide(child, mxy, transform=transform, tolerance=8):
             print "gui elem selected", child["id"]
             doc["editor.gui_selected"] = exr("`%s" % child["id"])
             break
 
 def doc_undo():
+    if doc.undo_index == -1:
+        save_undo()
+        doc.undo_index -= 1
     doc.undo_index -= 1
     doc.log("undo", doc.saved[doc.undo_index])
     doc.dirty.clear()
@@ -448,11 +460,24 @@ def save_undo():
     doc.undo_index = -1
 
 def fail():
+    # Do not write undo/redo events into history.
     return False
+
+def duplicate():
+    id_ = doc['editor.selected'].keys()[0]
+    node = doc[id_]
+    doc[doc['selection.root']].append(Node("group", render=exr('[`%s]' % id_),
+                               skip_points=True, id=id_ + "_copy",
+                               transforms={"clone": ('translate', P(10, 10))}))
+
+def paste_selection():
+    for id_ in doc['editor.selected']:
+        doc['drawing'].append(doc[id_].deepcopy())
 
 if __init__:
     doc.saved = [doc.m]
     doc.undo_index = -1
+    doc['overlay.transforms'] = exr('`drawing.transforms')
     doc.sync()
 
 input_callbacks = """
@@ -488,14 +513,17 @@ gui_add_sibling = key_press(a) !add_sibling
 update_gui_tree = key_press(h) update_gui_tree
 gui_select = mouse_press(3) !gui_select mouse_release(3)
 undo = key_press(z) !doc_undo ?fail
-redo = key_press(Z) !doc_redo ?fail
+redo = shift_key_press(z) !doc_redo ?fail
+paste = key_press(c) !paste_selection
 
 command = @exec | @button | @text | @move_point | @new_line | @new_rect
         | @select | @group | @ungroup | @layout | @move_selection
         | @update_layout | @visualize | @delete
         | @profile_start | @profile_end 
         | @zoom | @scroll
-        | @gui_add_child | @gui_add_sibling | @update_gui_tree | @gui_select
+        | @paste
+        | @gui_add_sibling | @update_gui_tree | @gui_select
         | @undo | @redo
 grammar = (@command !save_undo | @anything)*
 """
+        # | @gui_add_child 

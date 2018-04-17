@@ -99,6 +99,12 @@ class Surface:
                 context.set_source_rgb(*default_get(args, "stroke_color"))
                 context.move_to(*args["botleft"])
                 context.set_font_size(1.5 * args["font_size"])
+                if args.get("font_face"):
+                    context.select_font_face(args["font_face"],
+                                             cairo.FONT_SLANT_NORMAL,
+                                             cairo.FONT_WEIGHT_NORMAL)
+                else:
+                    context.set_font_face(None)
                 if numpy.array_equal(args["transform"], identity):
                     context.show_text(unicode(args["text"]))
                 else:

@@ -28,6 +28,14 @@ def _repr(value):
     else:
         return repr(value)
 
+def gen_id(doc, old_id):
+    i = 0
+    while True:
+        new_id = "%s_copy%s" % (old_id, i)
+        if new_id not in doc.m:
+            return new_id
+        i += 1
+
 class PointRepr:
     def __init__(self, array):
         self.array = array
@@ -62,11 +70,11 @@ class Node(FrozenNode):
                 raise Exception("ref nodes are depricated! Use expressions with a single id instead.")
             elif key == "transform":
                 # Should not have both transform and transforms.
-                kwargs["transforms"] = TransformDict(dict_={"singleton":value}, node=params["id"], doc=doc)
+                params["transforms"] = TransformDict(dict_={"singleton":value}, node=params["id"], doc=doc)
                 del kwargs["transform"]
             elif key == "transforms":
                 if type(value) not in [map_type, Ex]:
-                    kwargs["transforms"] = TransformDict(dict_=value, node=params["id"], doc=doc)
+                    params["transforms"] = TransformDict(dict_=value, node=params["id"], doc=doc)
         # Had problem where this overwrote value passed by param!
         # Need to know if "children" is the intended change or
         # params is the intended change!
@@ -94,7 +102,8 @@ class Node(FrozenNode):
         return FrozenNode.set(self, **kwargs)
 
     def __setitem__(self, key, value):
-        self.set_path([key], value)
+        return self.set_path([key], value)
+        #return self.set_path(key.split("."), value)
 
     def change_id(self, new_id):
         index = self.parent.index(self)
@@ -113,7 +122,7 @@ class Node(FrozenNode):
         if "transforms" not in self.params:
             return identity
         else:
-            for key in self.params["transforms"]:
+            for key in get_eval(self.params["transforms"]):
                 matrix = get_matrix(self["transforms"][key])
                 transform = transform.dot(matrix)
             return transform
@@ -130,8 +139,8 @@ class Node(FrozenNode):
                     sep=", "):
         empty = []
         if exclude_empty:
-            if self["id"].startswith("n_"):
-                empty.append("id")
+            #if self["id"].startswith("n_"):
+            #    empty.append("id")
             if not self.transforms:
                 empty.append("transforms")
 
@@ -224,7 +233,9 @@ class Node(FrozenNode):
             return point, point
         elif self.name == "text":
             botleft = transformed(self["botleft"], transform)
-            xy, wh, dxy = extents(unicode(self["value"]), default_get(self, "font_size"))
+            xy, wh, dxy = extents(unicode(self["value"]),
+                                  default_get(self, "font_size"),
+                                  default_get(self, "font_face"))
             botright = botleft + dxy
             topleft = botleft + xy
             return topleft, botright
@@ -235,3 +246,23 @@ class Node(FrozenNode):
             yield node, transform
             transform = transform.dot(node.transform)
             visited.extend((child, transform) for child in node)
+
+    def clone(self):
+        new_id = "%s_copy" % self["id"]
+        self.parent.append(self.set(params=self.params.set("id", new_id)))
+
+    def deepcopy(self):
+        params = dict(self.params.set('id', gen_id(self.doc, self["id"])))
+        if "transforms" in params:
+            transforms = dict(params['transforms'].dict_)
+            del params['transforms']
+        else:
+            transforms = {}
+        children = []
+        for child in self:
+            children.append(child.deepcopy())
+            if "child_id" in child:
+                #params = params.set(child["child_id"], Ex("`%s_copy" % child["id"]))
+                params[child["child_id"]] = Ex("`%s" % children[-1]["id"])
+        return Node(self.name, params=params, children=children,
+                    transforms=transforms)

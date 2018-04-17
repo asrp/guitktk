@@ -15,7 +15,7 @@ for event in all_events:
     setattr(Event, event, event)
 
 if BACKEND == "xcb":
-    from xcffib.xproto import GC, CW, EventMask, WindowClass, ExposeEvent, ButtonPressEvent, ButtonReleaseEvent, MotionNotifyEvent, KeyPressEvent, KeyReleaseEvent, KeyButMask
+    from xcffib.xproto import GC, CW, EventMask, WindowClass, ExposeEvent, ButtonPressEvent, ButtonReleaseEvent, MotionNotifyEvent, KeyPressEvent, KeyReleaseEvent, KeyButMask, NoExposureEvent
     from xpybutil import keybind
     import unikeysym
 
@@ -24,7 +24,8 @@ if BACKEND == "xcb":
                  MotionNotifyEvent: "motion",
                  KeyPressEvent: "key_press",
                  KeyReleaseEvent: "key_release",
-                 ExposeEvent: "expose"}
+                 ExposeEvent: "expose",
+                 NoExposureEvent: "no_exposure"}
 
     def key_name(keycode):
         return keybind.get_keysym_string(keybind.get_keysym(keycode))

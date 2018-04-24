@@ -35,8 +35,9 @@ if BACKEND == "xcb":
     def wrap_xcb_event(event, doc):
         global startdrag
         event.type = xcb_event.get(event.__class__, event.__class__)
+        # Should include key_release!
         if event.type == Event.key_press:
-            event.key_name = key_name(event.detail)
+            event.key_name = key_name(event.detail).lower()
             keysym = keybind.get_keysym(event.detail, event.state & 0b111)
             event.char = unikeysym.keys[keysym]["unicode"]\
                          if keysym in unikeysym.keys else u""
@@ -46,7 +47,7 @@ if BACKEND == "xcb":
             for attrib in dir(KeyButMask):
                 if not attrib.startswith("__"):
                     if event.state & getattr(KeyButMask, attrib):
-                        event.mods.append(attrib)
+                        event.mods.append(attrib.lower())
         elif event.type in [Event.mouse_press, Event.mouse_release]:
             event.button = event.detail
             event.xy = numpy.array([event.event_x, event.event_y])
@@ -55,7 +56,7 @@ if BACKEND == "xcb":
             for attrib in dir(KeyButMask):
                 if not attrib.startswith("__"):
                     if event.state & getattr(KeyButMask, attrib):
-                        event.mods.append(attrib)
+                        event.mods.append(attrib.lower())
             if event.type == Event.mouse_press and event.button == 1:
                 startdrag = event.xy
             logger.info("Wrapped: %s", (event.__class__.__name__, event.button, event.xy, event.mods))
@@ -90,11 +91,12 @@ elif BACKEND == "tkinter":
                 "<B%s-Motion>": "motion",
                 "<Motion>": "motion",
                 "<Key>": "key_press",
-                "<???>": "key_release",
+                "<KeyRelease>": "key_release",
                 "<expose>": "expose"}
 
-    tk_mods = ["Shift", "Caps", "Control", "LeftAlt", "NumLock",
-               "Right Alt", "Button 1", "Button 2", "Button 3"]
+    tk_mods = ["Shift", "Caps", "Control", "Left_Alt", "NumLock",
+               "Right_Alt", "Button 1", "Button 2", "Button 3"]
+    tk_mods = [m.lower() for m in tk_mods]
 
     tk_events = deque()
 
@@ -114,8 +116,9 @@ elif BACKEND == "tkinter":
     def wrap_tk_event(event, doc):
         global startdrag
         event.type = tk_event[event.raw_type[0]]
+        # Should include key_release!
         if event.type == Event.key_press:
-            event.key_name = event.keysym
+            event.key_name = event.keysym.lower()
             event.mods = []
             for i, attrib in enumerate(tk_mods):
                 if event.state & 1<<i:
@@ -156,9 +159,9 @@ elif BACKEND == "opengl":
     from OpenGL.GLUT import *
     from config import MAINLOOP
     ogl_events = defaultdict(deque)
-    glut_mods = [(GLUT_ACTIVE_SHIFT, "Shift"),
-                 (GLUT_ACTIVE_CTRL, "Control"),
-                 (GLUT_ACTIVE_ALT, "Alt")]
+    glut_mods = [(GLUT_ACTIVE_SHIFT, "shift"),
+                 (GLUT_ACTIVE_CTRL, "control"),
+                 (GLUT_ACTIVE_ALT, "alt")]
 
     event_poll = None
     event_doc = {}
@@ -228,7 +231,7 @@ elif BACKEND == "opengl":
             event.button = {GLUT_LEFT:1, 2:3, 3:4, 4:5}[event.button]
         elif event.type == Event.key_press:
             #event.key_name = event.key #key_name(event.key)
-            event.key_name = event.char
+            event.key_name = event.char.lower()
             if event.char == unichr(8):
                 event.key_name = "BackSpace"
             elif event.char == unichr(13):
@@ -262,3 +265,82 @@ elif BACKEND == "opengl":
         return event
 
     backend_poll = ogl_poll
+elif BACKEND == "sdl":
+    import pygame as pg
+
+    sdl_event = {pg.MOUSEBUTTONDOWN: "mouse_press",
+                 pg.MOUSEBUTTONUP: "mouse_release",
+                 pg.MOUSEMOTION: "motion",
+                 pg.KEYDOWN: "key_press",
+                 pg.KEYUP: "key_release",
+                 pg.VIDEOEXPOSE: "expose"}
+
+    pg_mods = {pg.__dict__[x]:x[5:].replace("CTRL", "CONTROL").lower()
+               for x in dir(pg) if x.startswith("KMOD_")}
+    pg_keys = {pg.__dict__[x]:x[2:].replace("CTRL", "CONTROL").lower()
+               for x in dir(pg) if x.startswith("K_")}
+    last_mods = []
+    # Shouldn't be needed. How is mouse_release called before mouse_press?
+    startdrag = None
+    def wrap_sdl_event(event, doc):
+        global startdrag, last_mods
+        event.type = sdl_event.get(event.raw_type, event.raw_type)
+        #print "type", event.type
+        if event.type in [Event.key_press, Event.key_release]:
+            event.key_name = pg_keys[event.key]
+            if event.type == Event.key_press:
+                event.char = event.unicode
+            else:
+                event.char = None
+            event.is_mod = event.key_name in pg_mods.values()
+            if event.key == pg.K_PAGEUP:
+                event.key_name = "page_up"
+            elif event.key == pg.K_PAGEDOWN:
+                event.key_name = "page_down"
+            event.mods = []
+            for mod, name in pg_mods.items():
+                if event.mod & mod:
+                    event.mods.append(name)
+            if event.type == Event.key_press and event.is_mod:
+                event.mods.append(event.key_name)
+                if event.key_name in ["lalt", "ralt",
+                                      "lcontrol", "rcontrol",
+                                      "lshift", "rshift"]:
+                    event.mods.append(event.key_name[1:])
+            last_mods = event.mods[:]
+            #print event.key_name.replace("CTRL", "CONTROL").capitalize(), pg_mods.values(), event.key, event.is_mod, event.mods, event.mod
+            logger.info("Wrapped: %s", (event.type, event.key_name, event.char, event.mods))
+        elif event.type in [Event.mouse_press, Event.mouse_release]:
+            event.xy = numpy.array(event.pos)
+            event.txy = numpy.linalg.solve(doc["drawing"].transform,
+                                           numpy.append(event.xy, [1]))[:2]
+            event.mods = last_mods[:]
+            if event.type == Event.mouse_press and event.button == 1:
+                startdrag = event.xy
+        elif event.type == Event.motion:
+            event.xy = numpy.array(event.pos)
+            event.txy = numpy.linalg.solve(doc["drawing"].transform,
+                                           numpy.append(event.xy, [1]))[:2]
+            event.drag_button = event.buttons.index(True) + 1\
+                                if any(event.buttons) else None
+            if event.drag_button and startdrag is not None:
+                event.diff = event.xy - startdrag
+            logger.info("Wrapped: %s", (event.type, event.xy))
+        return event
+
+    class SDLEvent(object):
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
+    def sdl_poll(doc):
+        pg_event = pg.event.poll()
+        if pg_event.type == pg.NOEVENT:
+            return None
+        event = SDLEvent(type=pg_event.type, **pg_event.__dict__)
+        event.raw_type = event.type
+        # Event.type is readonly!
+        wrap_sdl_event(event, doc)
+        return event
+
+    backend_poll = sdl_poll

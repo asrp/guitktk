@@ -25,7 +25,7 @@ import logging
 
 logformat = "[%(name)8s:%(levelno)3s] --- %(message)s" # (%(filename)s:%(lineno)s)"
 logging.basicConfig(level=logging.DEBUG, format=logformat)
-for name in ["draw", "poll", "proc", "event", "callback", "tk_draw", "ogl_draw", "tree", "transform", "eval", "key", "document", "recalc"]:
+for name in ["draw", "poll", "proc", "event", "callback", "tk_draw", "ogl_draw", "sdl_draw", "tree", "transform", "eval", "key", "document", "recalc"]:
     logging.getLogger(name).propagate = False
 for name in ["tree", "eval", "key"]:
     logging.getLogger(name).propagate = True
@@ -47,6 +47,11 @@ elif BACKEND == "opengl":
     GLUT.glutInit()
     GLUT.glutInitDisplayMode(GLUT.GLUT_RGB|GLUT.GLUT_DEPTH)
     from ogl_doc import OGLCanvas
+elif BACKEND == "sdl":
+    from sdl_doc import SDLCanvas, pygame
+    #import vidcap
+    pygame.init()
+    pygame.font.init()
 
 class Document(pdocument.Document):
     def __init__(self, surface, root):
@@ -86,7 +91,7 @@ class Document(pdocument.Document):
         f.write("from persistent_doc.document import pmap\n")
         f.write("import node\n")
         f.write("node.node_num = %s\n" % node.node_num)
-        f.write("root = %s" % self.tree_root.code())
+        f.write("root = %s" % self.tree_root.L.code())
         f.close()
         if not os.path.exists("saves"):
             os.makedirs("saves")
@@ -201,6 +206,8 @@ class EditorDocument(Document):
             Document.__init__(self, TkCanvas(800, 600, Toplevel()), root)
         elif BACKEND == "opengl":
             Document.__init__(self, OGLCanvas(800, 600), root)
+        elif BACKEND == "sdl":
+            Document.__init__(self, SDLCanvas(800, 600), root)
         pdocument.default_doc = self
         self.set_root(empty_doc())
         self.tree_ui = None
@@ -294,6 +301,11 @@ class EditorDocument(Document):
             self.update_text()
             if DRAW_FREQUENCY is None:
                 self.draw_loop(uidict["root"], None)
+            parents_assert = True
+            if parents_assert:
+                for node, _ in self.tree_root.L.dfs():
+                    if node["id"] != "root" and not node._parent:
+                        bp()
         if not self.STOP_POLLING:
             uidict["root"].after(POLL_FREQUENCY, self.poll)
 

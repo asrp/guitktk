@@ -6,17 +6,23 @@ from pymetaterp import python
 from node import Node
 from pdb import set_trace as bp
 
-def paramdict(params):
-    return {} if params is None else\
-           dict([params] if type(params) == tuple else\
-           params)
+def paramdict(params, children):
+    d = {} if params is None else\
+        dict([params] if type(params) == tuple else\
+        params)
+    if children:
+        if d.get('children'):
+            d['children'].extend(children)
+        else:
+            d['children'] = children
+    return d
 
 tree_grammar = r"""
 grammar = { (INDENT NEWLINE+ SAME_INDENT node (NEWLINE+ | ~anything))+
           | node } spaces
 escaped_char! = '\\' {'n'|'r'|'t'|'b'|'f'|'"'|'\''|'\\'}
-node = ("." {NAME=child_id} "=")? ({NAME:name} ':') (spaces {param})*:params 
-       hspaces suite:children -> DNode(name, children=children, **paramdict(params)) if children else DNode(name, **paramdict(params))
+node = ("." {NAME} "=")?:child_id ({NAME:name} ':') (spaces {param})*:params 
+       hspaces suite:children -> DNode(name, child_id=child_id, **paramdict(params, children))
 param = NAME:name "=" expr:val -> (name, val)
 expr = STRING:val -> val
      | NUMBER:val -> int(val)
@@ -46,7 +52,7 @@ hspacesp = (' ' | '\t')+
 # expr should join everything together
 
 inp = """
-group: id="root"
+ group: id="root"
   group: id="references"
   group: id="drawing"
     transforms=dict(zoom=("scale" P(1.0 1.0))
@@ -72,11 +78,17 @@ group: id="root"
 
 """
 inp2 = """
-group: id="root"
+ group: id="root"
   group: id="references"
   group: id="drawing"
     text: value="inner1"
   group: id="overlay"
+"""
+inp3 = """
+    group: transforms=dict(pos=("translate", (100, 200)))
+      .left=text:   value='a' p_botleft=(-30, -10)
+      .middle=text: value='b' p_botleft=(-10, -10)
+      .right=text:  value='c' p_botleft=( 10, -10)
 """
 
 def interpreter():
@@ -106,7 +118,9 @@ if __name__ == "__main__":
     import persistent_doc.document as pdocument
     #python.DNode = DNode
     #python.Node = DNode
-    pdocument.default_doc = pdocument.Document(DNode("group", id="root"))
-    out = interp.parse("grammar", inp, locals={"DNode": DNode})
+    pdocument.default_doc = pdocument.Document(Node("group", id="root"))
+    #out = interp.parse("grammar", inp, locals={"DNode": Node})
+    out = parse(inp2, locals=globals(), debug=True)
+    #pdocument.default_doc.tree_root.append(out)
     out.pprint()
 

@@ -1,4 +1,4 @@
-from persistent_doc.document import FrozenNode, map_type, get_eval, Ex, Expr
+from persistent_doc.document import FrozenNode, map_type, get_eval, Ex, Expr, wrap_children
 from persistent_doc.transform import TransformDict
 import persistent_doc.document as pdocument
 from const import default_get, identity, transformed, get_matrix
@@ -55,6 +55,8 @@ class Node(FrozenNode):
         if "id" not in params:
             params["id"] = "n_%s" % node_num
             node_num += 1
+        if "child_id" in params and params["child_id"] is None:
+            del params["child_id"]
         for key, value in kwargs.items():
             if key.startswith("p_"):
                 children.append(Node("point", child_id=key[2:], value=value))
@@ -75,6 +77,8 @@ class Node(FrozenNode):
             elif key == "transforms":
                 if type(value) not in [map_type, Ex]:
                     params["transforms"] = TransformDict(dict_=value, node=params["id"], doc=doc)
+        if "transforms" not in params:
+            params["transforms"] = TransformDict(node=params["id"], dict_={}, doc=doc)
         # Had problem where this overwrote value passed by param!
         # Need to know if "children" is the intended change or
         # params is the intended change!
@@ -91,7 +95,9 @@ class Node(FrozenNode):
         for child_id in children:
             child = get_eval(child_id)
             if "child_id" in child and child["child_id"] not in params:
-                params[child["child_id"]] = child_id
+                # Want the wrapped version of the child!
+                # params[child["child_id"]] = child
+                params[child["child_id"]] =  wrap_children(params["id"], doc, [child])[0]
         if type(params).__name__ == '_Evolver':
             params = params.persistent()
         return FrozenNode.__new__(cls, name=name, params=params,
@@ -102,14 +108,15 @@ class Node(FrozenNode):
         return FrozenNode.set(self, **kwargs)
 
     def __setitem__(self, key, value):
-        return self.set_path([key], value)
-        #return self.set_path(key.split("."), value)
+        #return self.set_path([key], value)
+        return self.set_path(key.split("."), value)
 
     def change_id(self, new_id):
+        # Should do something about selection and probably other rdepend
         index = self.parent.index(self)
         self["id"] = new_id
         self = self.doc[new_id]
-        self.parent[index] = self
+        self.parent.set_child(index, self)
         #for child in self:
         #    child.change(_parent=wrap3(new_id, doc))
 
@@ -129,7 +136,8 @@ class Node(FrozenNode):
 
     @property
     def transforms(self):
-        self = self.L
+        if self['id'] in self.doc:
+            self = self.L
         if "transforms" not in self:
             self["transforms"] = TransformDict(node=self["id"], doc=self.doc)
             self = self.latest()

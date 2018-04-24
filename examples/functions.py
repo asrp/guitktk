@@ -16,7 +16,7 @@ pdocument.scope = {"P": P, "cur_time": cur_time, "transformed": transformed}
 
 def add_letter(node_id=None):
     node_id = node_id if node_id is not None else doc["editor.focus"]
-    if doc["editor.key_name"] == "BackSpace":
+    if doc["editor.key_name"] == "backspace":
         doc[node_id + ".value"] = doc[node_id + ".value"][:-1]
     else:
         doc[node_id + ".value"] += doc["editor.key_char"]
@@ -33,10 +33,10 @@ def clear(node_id):
 
 def key_press(event, key_name=None):
     return event.type == Event.key_press and\
-        (key_name is None or (event.key_name == key_name and (not key_name.isalpha or "Shift" not in event.mods)))
+        (key_name is None or (event.key_name == key_name and (not key_name.isalpha or "shift" not in event.mods)))
 
 def shift_key_press(event, key_name=None):
-    return event.type == Event.key_press and "Shift" in event.mods and\
+    return event.type == Event.key_press and "shift" in event.mods and\
         (key_name is None or event.key_name.lower() == key_name)
 
 def run_button():
@@ -381,12 +381,12 @@ def scroll(axis_side):
 
 def shift_mouse_press(event, button=None):
     return event.type == Event.mouse_press and\
-           "Shift" in event.mods and\
+           "shift" in event.mods and\
            (button is None or event.button == int(button))
 
 def control_mouse_press(event, button=None):
     return event.type == Event.mouse_press and\
-           "Control" in event.mods and\
+           "control" in event.mods and\
            (button is None or event.button == int(button))
 
 def zoom(out):
@@ -474,6 +474,13 @@ def paste_selection():
     for id_ in doc['editor.selected']:
         doc['drawing'].append(doc[id_].deepcopy())
 
+def selected_nodes():
+    return [ref['ref'] for ref in doc['selection']]
+
+def clear_selection():
+    for node in selected_nodes():
+        selection_del(doc, node)
+
 if __init__:
     doc.saved = [doc.m]
     doc.undo_index = -1
@@ -481,13 +488,13 @@ if __init__:
     doc.sync()
 
 input_callbacks = """
-exec = key_press(Return)
-       (~key_press(Return) (key_press !add_letter(console) | @anything))*
-       key_press(Return) !run_text(console) !clear(console)
+exec = key_press(return)
+       (~key_press(return) (key_press !add_letter(console) | @anything))*
+       key_press(return) !run_text(console) !clear(console)
 button = mouse_press(1) ?run_button mouse_release(1)
 text = key_press(t) (?edit_text | !create_text)
-       (~key_press(Return) (key_press !add_letter | @anything))*
-       key_press(Return) !finished_edit_text
+       (~key_press(return) (key_press !add_letter | @anything))*
+       key_press(return) !finished_edit_text
 move_point = key_press(e) ?grab_point (~key_press(e) @anything)* key_press(e) !drop_point
 new_line = key_press(l) !add_line
 new_rect = key_press(r) !add_rectangle
@@ -515,13 +522,14 @@ gui_select = mouse_press(3) !gui_select mouse_release(3)
 undo = key_press(z) !doc_undo ?fail
 redo = shift_key_press(z) !doc_redo ?fail
 paste = key_press(c) !paste_selection
+clear_selection = key_press(escape) !clear_selection
 
 command = @exec | @button | @text | @move_point | @new_line | @new_rect
         | @select | @group | @ungroup | @layout | @move_selection
         | @update_layout | @visualize | @delete
         | @profile_start | @profile_end 
         | @zoom | @scroll
-        | @paste
+        | @paste | @clear_selection
         | @gui_add_sibling | @update_gui_tree | @gui_select
         | @undo | @redo
 grammar = (@command !save_undo | @anything)*

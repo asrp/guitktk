@@ -462,13 +462,13 @@ if __init__:
     doc.save("coverage_test.py")
 
 input_callbacks = """
-exec = key_press(Return)
-      (~key_press(Return) (key_press !add_letter(console) | @anything))*
-      key_press(Return) !run_text(console) !clear(console)
+exec = key_press(return)
+      (~key_press(return) (key_press !add_letter(console) | @anything))*
+      key_press(return) !run_text(console) !clear(console)
 button = mouse_press(1) ?run_button mouse_release(1)
 text = key_press(t) (?edit_text | !create_text)
-       (~key_press(Return) (key_press !add_letter | @anything))*
-       key_press(Return) !finished_edit_text
+       (~key_press(return) (key_press !add_letter | @anything))*
+       key_press(return) !finished_edit_text
 move_point = key_press(e) ?grab_point (~key_press(e) @anything)* key_press(e) !drop_point
 new_line = key_press(l) !add_line
 new_line = key_press(l) (mouse_press(1) !add_line | ~key_press @anything)*

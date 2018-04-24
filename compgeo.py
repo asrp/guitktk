@@ -75,6 +75,12 @@ def extents(text, font_size, font_face=None):
             surface.context.set_font_face(None)
         x, y, width, height, dx, dy = surface.context.text_extents(text)
         return (x, y), (width, height), (dx, dy)
+    elif BACKEND == "sdl":
+        import sdl_doc
+        font_size = int(round(font_size * 1.5))
+        text = sdl_doc.get_font((font_face, font_size)).render(text, True, (0, 0, 0))
+        w, h = text.get_width(), text.get_height()
+        return (0, -h), (w, h), (w, 0)
     else:
         # TODO: Get actual text extents
         w, h = (len(text) * font_size, font_size)

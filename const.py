@@ -53,6 +53,8 @@ def rounded(point):
     return (point + GRID/2) // GRID * GRID
 
 def get_matrix(transform):
+    if transform is None:
+        return identity
     operation, args = transform
     if operation == "linear":
         matrix = args
@@ -64,6 +66,10 @@ def get_matrix(transform):
         matrix = numpy.array([[args[0], 0, 0],
                               [0, args[1], 0],
                               [0,       0, 1]])
+    elif operation == "rotate":
+        matrix = numpy.array([[math.cos(args), -math.sin(args), 0],
+                              [math.sin(args),  math.cos(args), 0],
+                              [0, 0, 1]])
     else:
         raise Exception('Unknown transform %s' % operation)
     return matrix

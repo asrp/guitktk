@@ -265,7 +265,7 @@ class EditorDocument(Document):
             #if event.type == Event.key_press:
             #    self.add_letter("echo")
             if event.type == Event.key_press:
-                if "Control" in event.mods and event.key_name.lower() == "r":
+                if "control" in event.mods and event.key_name.lower() == "r":
                     if "save_undo" in globals():
                         save_undo()
                     print "Reloading"
@@ -276,7 +276,7 @@ class EditorDocument(Document):
                     except:
                         self.last_tb = sys.exc_traceback
                         traceback.print_exc()
-                elif "Control" in event.mods and event.key_name.lower() == "z":
+                elif "control" in event.mods and event.key_name.lower() == "z":
                     self.undo_reload()
                 #print event.mods, event.key_name
             if self.interp:

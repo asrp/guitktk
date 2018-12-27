@@ -25,7 +25,7 @@ node = ("." {NAME} "=")?:child_id ({NAME:name} ':') (spaces {param})*:params
        hspaces suite:children -> DNode(name, child_id=child_id, **paramdict(params, children))
 param = NAME:name "=" expr:val -> (name, val)
 expr = STRING:val -> val
-     | NUMBER:val -> int(val)
+     | NUMBER:val -> float(val) if '.' in val else int(val)
      | (NAME balanced | NAME | balanced | list_balanced):val -> eval(val) # val
      # | LAZY_EVAL:val -> val
 suite = (INDENT (NEWLINE+ SAME_INDENT node)+ DEDENT
@@ -40,7 +40,7 @@ SAME_INDENT = hspaces:s ?(self.indentation[-1] == (len(s) if s != None else 0))
 INDENT = ~~(NEWLINE hspaces:s ?(self.indentation[-1] < (len(s) if s != None else 0))) !(self.indentation.append(len(s) if s != None else 0))
 DEDENT = !(self.indentation.pop())
 NAME = (letter | '_') (letter | digit | '_' | '.')*
-NUMBER = '-'? digit+
+NUMBER = '-'? (digit | '.')+
 
 comment = ('#' {(~'\n' {anything})*})=comment
 space = '\n' | '\r' | hspace
@@ -90,6 +90,9 @@ inp3 = """
       .middle=text: value='b' p_botleft=(-10, -10)
       .right=text:  value='c' p_botleft=( 10, -10)
 """
+inp4 = """
+    group: foo=1.0
+"""
 
 def interpreter():
     i1 = boot.Interpreter(simple_wrap_tree(boot_tree.tree))
@@ -120,7 +123,7 @@ if __name__ == "__main__":
     #python.Node = DNode
     pdocument.default_doc = pdocument.Document(Node("group", id="root"))
     #out = interp.parse("grammar", inp, locals={"DNode": Node})
-    out = parse(inp2, locals=globals(), debug=True)
+    out = parse(inp4, locals=globals(), debug=True)
     #pdocument.default_doc.tree_root.append(out)
     out.pprint()
 

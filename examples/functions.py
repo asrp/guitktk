@@ -1,5 +1,5 @@
 from draw import collide, simplify_transform
-from const import rounded, identity, get_matrix, transformed
+from const import rounded, identity, get_matrix, transformed, default_get
 from const import get_translate, get_scale
 import numpy
 import persistent_doc.document as pdocument
@@ -182,6 +182,7 @@ def selection_bbox(node_id):
 
 def toggle_selection():
     root = doc[doc["selection"]["root"]]
+    # Assumes root.combined_transform().dot(root.transform) is the identity.
     txy = doc["editor.mouse_txy"]
     for child in reversed(root):
         if collide(child, txy):

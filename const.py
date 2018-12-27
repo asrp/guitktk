@@ -14,7 +14,9 @@ default = {"line_width": 2,
            "angle": (0, 2*math.pi),
            "icon": "point_icon",
            "visible": True,
-           "render": ()}
+           "opacity": 1.0,
+           "render": (),
+           "topleft": {"value": (0, 0)}}
 
 #identity = numpy.matrix(numpy.identity(3, dtype = int))
 identity = numpy.identity(3, dtype = int)

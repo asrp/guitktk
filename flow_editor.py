@@ -49,7 +49,6 @@ elif BACKEND == "opengl":
     from ogl_doc import OGLCanvas
 elif BACKEND == "sdl":
     from sdl_doc import SDLCanvas, pygame
-    #import vidcap
     pygame.init()
     pygame.font.init()
 
@@ -80,7 +79,9 @@ class Document(pdocument.Document):
             node = node.parent
         return node
 
-    def save(self, filename = "saved_doc.py"):
+    def save(self, filename=None):
+        filename = doc['editor'].get("filename", "saved_doc.py")\
+                   if filename is None else filename
         import node
         from shutil import copyfile
         timestr = time.strftime("%Y%m%d-%H%M%S")
@@ -97,7 +98,9 @@ class Document(pdocument.Document):
             os.makedirs("saves")
         copyfile(filename, os.path.join("saves", "%s-%s" % (filename, timestr)))
 
-    def load(self, filename = "saved_doc"):
+    def load(self, filename=None):
+        filename = doc['editor'].get("filename", "saved_doc.py")\
+                   if filename is None else filename
         # A bit dangerous because of eval at the moment.
         if filename.endswith(".py"):
             filename = filename[:-3]

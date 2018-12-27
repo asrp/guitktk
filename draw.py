@@ -34,9 +34,12 @@ def _flatten(root, style={}, transform=identity, skip_transform=False):
     if not default_get(root, "visible"):
         return
     style = style.copy()
-    for key in ["line_width", "stroke_color", "fill_color", "dash", "skip_points"]:
+    for key in ["line_width", "stroke_color", "fill_color", "dash",
+                "skip_points"]:
         if key in root:
             style[key] = root[key]
+    if "opacity" in root:
+        style["opacity"] = default_get(style, "opacity") * root["opacity"]
     if not skip_transform:
         transform = transform.dot(root.transform)
     if root.name in ["line", "curve", "arc", "path"]:
@@ -95,10 +98,15 @@ def _flatten(root, style={}, transform=identity, skip_transform=False):
                         "font_size": default_get(root, "font_size"),
                         "font_face": default_get(root, "font_face"),
                         "stroke_color": default_get(style, "stroke_color"),
-                        "botleft": transformed(root["botleft"], transform)})
+                        "botleft": transformed(root["botleft"], transform),
+                        "opacity": default_get(style, "opacity")})
+    elif root.name == "image":
+        yield ("image", {"filename": root['filename'],
+                         "topleft": default_get(root, "topleft")['value'],
+                         "transform": transform})
     elif root.name == "group":
         yield ("group", ())
-    if root.name in ["group", "text"]:
+    if root.name in ["group", "text", "image"]:
         #if default_get(root, "visible"):
         for child in root:
             for elem in flatten(child, style = style,
@@ -162,11 +170,11 @@ def simplify_transform(node, transform = identity):
         node["value"] = transformed(node, transform)
         if "transforms" in node:
             #node["transforms"] = TransformDict(node=node)
-            node["transforms"].clear()
+            node.L["transforms"].clear()
             #node["transforms"].replace({})
     else:#if node.name in ["path", "group", ]:
         transform = transform.dot(node.transform)
         if "transforms" in node:
-            node["transforms"].clear()
+            node.L["transforms"].clear()
         for child in node:
             simplify_transform(child, transform)

@@ -45,8 +45,9 @@ def is_left(point, segment):
 
 def point_in_closed_path(point, path):
     # Compute the winding number
-    # Pick any direction and corresponding half infinite segment.
+    # Pick any direction from point and corresponding half infinite segment.
     # See how mnay times that segment is crossed.
+    # We pick the half infinite line going straight right
     winding_number = 0
     for segment in path:
         # Cross up

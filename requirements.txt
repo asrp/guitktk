@@ -1,5 +1,7 @@
 -e git://github.com/asrp/persistent_doc#egg=persistent_doc
 -e git://github.com/asrp/tkui#egg=tkui
 -e git://github.com/asrp/pymetaterp#egg=pymetaterp
+-e git://github.com/asrp/uielem#egg=uielem
+-e git://github.com/asrp/undoable#egg=undoable
 pyrsistent
 numpy

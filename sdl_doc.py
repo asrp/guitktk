@@ -14,10 +14,7 @@ def intcol(color):
 
 fonts = {}
 font_files = {"monospace": "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
-              "opensans": "../fonts/OpenSans-Regular.ttf",
-              "dia": "../fonts/Lato-Bold.ttf",
-              "title": "../fonts/Roboto-Black.ttf",
-              None: "../fonts/OpenSans-Bold.ttf"}
+              None: None}
 
 def get_font(font):
     if font not in fonts:
@@ -42,7 +39,7 @@ class SDLCanvas:
                 if len(points) <= 1: continue
                 #flat_pts = [coord for point in points for coord in point]
                 # Problem: with alpha, want a bbox and then translate...
-                if default_get(args, "fill_color"):
+                if default_get(args, "fill_color") and len(points) > 2:
                     pygame.draw.polygon(surface,
                                         intcol(default_get(args, "fill_color")),
                                         map(tuple, points),

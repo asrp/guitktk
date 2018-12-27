@@ -68,7 +68,9 @@ class Surface:
             self.contexts[layer].set_source_rgb (1, 1, 1)
         else:
             self.contexts[layer].set_source_rgba (1, 1, 1, 0)
+        self.contexts[layer].set_operator(cairo.OPERATOR_SOURCE)
         self.contexts[layer].paint()
+        self.contexts[layer].set_operator(cairo.OPERATOR_OVER)
         #self.context.scale(self.width, self.height)
 
     def show(self):
@@ -82,21 +84,24 @@ class Surface:
         context = self.contexts[layer]
         for func, args in flatten(root):
             if func == "stroke_and_fill":
+                opacity = default_get(args, "opacity")
                 if default_get(args, "fill_color"):
-                    context.set_source_rgb(*default_get(args, "fill_color"))
+                    context.set_source_rgba(*default_get(args, "fill_color"), alpha=opacity)
                     if args.get("stroke_color") is not None:
                         context.fill_preserve()
                     else:
                         context.fill()
                 if default_get(args, "stroke_color"):
                     context.set_line_width(default_get(args, "line_width"))
-                    context.set_source_rgb(*default_get(args, "stroke_color"))
+                    context.set_source_rgba(*default_get(args, "stroke_color"), alpha=opacity)
                     context.set_dash(*default_get(args, "dash"))
                     context.stroke()
             elif func == "text":
                 if args["text"] is None:
                     continue
-                context.set_source_rgb(*default_get(args, "stroke_color"))
+                opacity = default_get(args, "opacity")
+                context.set_source_rgba(*default_get(args, "stroke_color"),
+                                        alpha=opacity)
                 context.move_to(*args["botleft"])
                 context.set_font_size(1.5 * args["font_size"])
                 if args.get("font_face"):
@@ -112,6 +117,19 @@ class Surface:
                     matrix = cairo.Matrix(*args["transform"].T[:,:2].flatten())
                     context.transform(matrix)
                     context.show_text(unicode(args["text"]))
+                    context.restore()
+            elif func == "image":
+                # PNG only for the moment
+                img = cairo.ImageSurface.create_from_png(args["filename"])
+                if numpy.array_equal(args["transform"], identity):
+                    context.set_source_surface(img, *args["topleft"])
+                    context.paint()
+                else:
+                    context.save()
+                    matrix = cairo.Matrix(*args["transform"].T[:,:2].flatten())
+                    context.transform(matrix)
+                    context.set_source_surface(img, *args["topleft"])
+                    context.paint()
                     context.restore()
             elif func == "group":
                 pass
@@ -146,6 +164,8 @@ class Surface:
         self.lastupdate[layer_id] = time.time()
 
     def expose(self):
+        self.context.set_source_rgb (1, 1, 1)
+        self.context.paint()
         for layer in ["drawing", "ui"]:
             self.context.set_source_surface(self.surfaces[layer])
             self.context.paint()
